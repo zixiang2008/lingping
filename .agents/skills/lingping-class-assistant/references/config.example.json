@@ -1,6 +1,7 @@
 {
   "lingping_username": "classmate@example.com",
   "timezone": "Asia/Bangkok",
+  "language": "zh-CN",
   "calendar_id": "primary",
   "notification": {
     "mode": "auto",
