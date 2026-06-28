@@ -1,4 +1,19 @@
+<div align="center">
+
 # Lingping.Skills
+
+### Lingping Club 课程、日历与智能提醒助手
+
+[简体中文](README.md) · [English](README.en.md) · [ไทย](README.th.md)
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Agent Skill](https://img.shields.io/badge/Agent-Skill-111827)
+![Languages](https://img.shields.io/badge/UI-中文%20%7C%20English%20%7C%20ไทย-0F766E)
+![License](https://img.shields.io/badge/License-MIT-2563EB)
+
+</div>
+
+---
 
 面向 Lingping Club 学员的课程、预定、Google 日历和上课提醒 Agent Skill。
 
@@ -15,6 +30,7 @@
 - 使用 Session ID 增量更新，避免重复创建事件。
 - 自动选择 Hermes、Google 日历或本机通知作为提醒渠道。
 - 所有用户提醒和状态文本使用中文。
+- 课程汇总、日历状态和提醒支持简体中文、English、ไทย三种语言。
 - 不会自动报课、取消课程或删除历史日历事件。
 
 ## 工作方式
@@ -82,6 +98,7 @@ cp .agents/skills/lingping-class-assistant/references/config.example.json \
 {
   "lingping_username": "your-lingping-email@example.com",
   "timezone": "Asia/Bangkok",
+  "language": "zh-CN",
   "calendar_id": "primary",
   "notification": {
     "mode": "auto",
@@ -96,6 +113,7 @@ cp .agents/skills/lingping-class-assistant/references/config.example.json \
 
 - `lingping_username`：Lingping 登录用户名。不要把个人账号直接写入公开仓库。
 - `timezone`：IANA 时区，例如 `Asia/Bangkok`。
+- `language`：界面语言，可选 `zh-CN`、`en` 或 `th`。
 - `calendar_id`：Google 主日历使用 `primary`；也可填写已授权的其他日历 ID。
 - `notification.mode`：推荐使用 `auto`，也支持 `hermes`、`google_calendar` 或 `macos_notification`。
 - `hermes_channel`：Hermes 已验证的目标通讯渠道；未绑定时保持为空。
@@ -123,6 +141,14 @@ python3 "$SCRIPT" self-test
 
 ```bash
 python3 "$SCRIPT" daily
+```
+
+临时切换输出语言：
+
+```bash
+python3 "$SCRIPT" daily --language zh-CN
+python3 "$SCRIPT" daily --language en
+python3 "$SCRIPT" daily --language th
 ```
 
 查看未来预定：
