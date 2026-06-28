@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read Lingping schedules/bookings and emit Chinese automation messages."""
+"""Read Lingping schedules/bookings and emit localized automation messages."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ SITE = "https://lingpingclub.com"
 EMAIL = ""
 STATE = Path.home() / ".codex" / "lingping-class-assistant" / "state.json"
 CONFIG = Path.home() / ".config" / "lingping" / "config.json"
+LANG_OVERRIDE: str | None = None
 
 
 def configured_timezone() -> ZoneInfo:
@@ -24,10 +25,7 @@ def configured_timezone() -> ZoneInfo:
         value = json.loads(CONFIG.read_text()).get("timezone", "Asia/Bangkok")
     except (FileNotFoundError, json.JSONDecodeError):
         value = "Asia/Bangkok"
-    try:
-        return ZoneInfo(value)
-    except (KeyError, TypeError) as exc:
-        raise RuntimeError(f"无效时区：{value}") from exc
+    return ZoneInfo(value)
 
 
 TZ = configured_timezone()
@@ -36,6 +34,59 @@ CATALOGS = {
     "community-chiangmai": "67eab5b337cd4b56a080743f",
     "english-online": "6982e63b245037c5977a9390",
 }
+
+I18N = {
+    "zh-CN": {
+        "online": "线上", "location_tba": "地点待定", "host_tba": "待定",
+        "content_tba": "课程内容待网站更新", "booked": "已报名", "unbooked": "未报名",
+        "reference_only": "仅供查阅", "course_content": "课程内容", "teacher": "老师",
+        "state": "状态", "seats": "余位", "source": "来源", "pending": "待确认",
+        "canceled": "已取消", "full": "已满", "available": "可报", "seats_left": "余 {n} 位",
+        "local": "清迈线下", "tomorrow": "明天", "none": "暂无", "no_bookings": "暂无未来预定。",
+        "daily_title": "Lingping 明日课程更新", "all_english": "一、明天全部英文课程",
+        "local_english": "二、清迈线下英文课", "online_english": "三、线上英文课",
+        "future_bookings": "四、当前未来预定", "synced": "同步时间",
+        "reminder": "上课提醒：你预定的《{title}》将在约 1 小时后开始。",
+        "time": "时间", "format": "形式", "timezone_label": "清迈时间",
+    },
+    "en": {
+        "online": "Online", "location_tba": "Location TBA", "host_tba": "TBA",
+        "content_tba": "Course details have not been updated", "booked": "Booked", "unbooked": "Not booked",
+        "reference_only": "For reference only", "course_content": "Course content", "teacher": "Teacher",
+        "state": "Status", "seats": "Seats left", "source": "Source", "pending": "TBC",
+        "canceled": "Canceled", "full": "Full", "available": "Available", "seats_left": "{n} left",
+        "local": "Chiang Mai in person", "tomorrow": "Tomorrow", "none": "None", "no_bookings": "No upcoming bookings.",
+        "daily_title": "Lingping courses for tomorrow", "all_english": "1. All English courses tomorrow",
+        "local_english": "2. In-person English in Chiang Mai", "online_english": "3. Online English courses",
+        "future_bookings": "4. Current upcoming bookings", "synced": "Synced at",
+        "reminder": "Class reminder: your booked class “{title}” starts in about one hour.",
+        "time": "Time", "format": "Format", "timezone_label": "Chiang Mai time",
+    },
+    "th": {
+        "online": "ออนไลน์", "location_tba": "รอประกาศสถานที่", "host_tba": "รอยืนยัน",
+        "content_tba": "รออัปเดตรายละเอียดหลักสูตร", "booked": "ลงทะเบียนแล้ว", "unbooked": "ยังไม่ได้ลงทะเบียน",
+        "reference_only": "สำหรับดูข้อมูลเท่านั้น", "course_content": "เนื้อหาหลักสูตร", "teacher": "ผู้สอน",
+        "state": "สถานะ", "seats": "ที่นั่งคงเหลือ", "source": "แหล่งที่มา", "pending": "รอยืนยัน",
+        "canceled": "ยกเลิกแล้ว", "full": "เต็ม", "available": "ลงทะเบียนได้", "seats_left": "เหลือ {n} ที่",
+        "local": "เรียนที่เชียงใหม่", "tomorrow": "พรุ่งนี้", "none": "ไม่มี", "no_bookings": "ไม่มีการจองในอนาคต",
+        "daily_title": "ตารางเรียน Lingping สำหรับวันพรุ่งนี้", "all_english": "1. คอร์สภาษาอังกฤษทั้งหมดในวันพรุ่งนี้",
+        "local_english": "2. คอร์สภาษาอังกฤษแบบออนไซต์ในเชียงใหม่", "online_english": "3. คอร์สภาษาอังกฤษออนไลน์",
+        "future_bookings": "4. การจองที่กำลังจะมาถึง", "synced": "ซิงค์เมื่อ",
+        "reminder": "แจ้งเตือนชั้นเรียน: คลาสที่คุณจอง “{title}” จะเริ่มในประมาณ 1 ชั่วโมง",
+        "time": "เวลา", "format": "รูปแบบ", "timezone_label": "เวลาเชียงใหม่",
+    },
+}
+
+
+def language() -> str:
+    value = LANG_OVERRIDE or settings().get("language", "zh-CN")
+    aliases = {"zh": "zh-CN", "zh-cn": "zh-CN", "cn": "zh-CN", "en-US": "en", "en-GB": "en", "thai": "th"}
+    value = aliases.get(value, aliases.get(str(value).lower(), value))
+    return value if value in I18N else "zh-CN"
+
+
+def t(key: str, **kwargs) -> str:
+    return I18N[language()][key].format(**kwargs)
 
 
 def curl(url: str, *, headers: dict[str, str] | None = None, data: dict | None = None,
@@ -79,6 +130,7 @@ def settings() -> dict:
     defaults = {
         "lingping_username": EMAIL,
         "timezone": "Asia/Bangkok",
+        "language": "zh-CN",
         "calendar_id": "primary",
         "notification": {
             "mode": "auto", "hermes_channel": "",
@@ -156,17 +208,17 @@ def normalize(raw: dict, catalog: str = "") -> dict:
     level = str(raw.get("level") or "")
     location = str(raw.get("location") or "").strip()
     online = "online" in level.lower() or "online" in catalog or not location
-    hosts = ", ".join(h.get("name", "") for h in raw.get("hosts", []) if h.get("name")) or "待定"
+    hosts = ", ".join(h.get("name", "") for h in raw.get("hosts", []) if h.get("name")) or t("host_tba")
     return {
         "id": str(raw.get("_id") or raw.get("id") or ""),
         "title": str(raw.get("title") or "未命名课程"),
         "start": start,
         "end": start + timedelta(minutes=duration),
         "online": online,
-        "location": "线上" if online else (location or "地点待定"),
+        "location": t("online") if online else (location or t("location_tba")),
         "location_url": raw.get("locationUrl") or "",
         "host": hosts,
-        "description": str(raw.get("fullDescription") or raw.get("shortDescription") or "课程内容待网站更新"),
+        "description": str(raw.get("fullDescription") or raw.get("shortDescription") or t("content_tba")),
         "full": bool(raw.get("isFull")),
         "canceled": raw.get("maxParticipants") == -1,
         "seats": raw.get("numberOfSeatsLeft"),
@@ -205,47 +257,47 @@ def calendar_items() -> list[dict]:
     for s in bookings:
         items.append({
             "source_id": s["id"], "booked": True,
-            "title": f"【已报名】{s['title']}",
+            "title": f"【{t('booked')}】{s['title']}",
             "start": s["start"].isoformat(), "end": s["end"].isoformat(),
             "location": s["location"], "reminder_minutes": 60, "transparency": "opaque",
-            "description": f"课程内容：{s['description']}\n老师：{s['host']}\n状态：已报名\n来源：{SITE}\nLingping Session ID: {s['id']}",
+            "description": f"{t('course_content')}: {s['description']}\n{t('teacher')}: {s['host']}\n{t('state')}: {t('booked')}\n{t('source')}: {SITE}\nLingping Session ID: {s['id']}",
         })
     for s in sessions:
         if s["id"] in booked_ids or s["online"]:
             continue
         items.append({
             "source_id": s["id"], "booked": False,
-            "title": f"【未报名】{s['title']}",
+            "title": f"【{t('unbooked')}】{s['title']}",
             "start": s["start"].isoformat(), "end": s["end"].isoformat(),
             "location": s["location"], "reminder_minutes": None, "transparency": "transparent",
-            "description": f"课程内容：{s['description']}\n老师：{s['host']}\n状态：未报名，仅供查阅\n余位：{s['seats'] if s['seats'] is not None else '待确认'}\n来源：{SITE}\nLingping Session ID: {s['id']}",
+            "description": f"{t('course_content')}: {s['description']}\n{t('teacher')}: {s['host']}\n{t('state')}: {t('unbooked')} · {t('reference_only')}\n{t('seats')}: {s['seats'] if s['seats'] is not None else t('pending')}\n{t('source')}: {SITE}\nLingping Session ID: {s['id']}",
         })
     return sorted(items, key=lambda x: x["start"])
 
 
 def status(s: dict) -> str:
     if s["canceled"]:
-        return "已取消"
+        return t("canceled")
     if s["full"]:
-        return "已满"
+        return t("full")
     if s["seats"] is not None:
-        return f"可报（余 {s['seats']} 位）"
-    return "可报"
+        return f"{t('available')} ({t('seats_left', n=s['seats'])})"
+    return t("available")
 
 
 def line(s: dict, booked: bool = False) -> str:
-    place = "线上" if s["online"] else f"清迈线下 · {s['location']}"
-    marker = " · 已预定" if booked else f" · {status(s)}"
-    return f"- {s['start']:%H:%M}–{s['end']:%H:%M}｜{s['title']}｜{place}｜老师：{s['host']}{marker}"
+    place = t("online") if s["online"] else f"{t('local')} · {s['location']}"
+    marker = f" · {t('booked')}" if booked else f" · {status(s)}"
+    return f"- {s['start']:%H:%M}–{s['end']:%H:%M}｜{s['title']}｜{place}｜{t('teacher')}: {s['host']}{marker}"
 
 
 def print_bookings(bookings: list[dict], tomorrow=None) -> None:
     if not bookings:
-        print("暂无未来预定。")
+        print(t("no_bookings"))
         return
     for s in bookings:
-        mark = "（明天）" if tomorrow and s["start"].date() == tomorrow else ""
-        print(f"- {s['start']:%m月%d日 %H:%M} {mark}｜{s['title']}｜{s['location']}｜老师：{s['host']}")
+        mark = f"({t('tomorrow')})" if tomorrow and s["start"].date() == tomorrow else ""
+        print(f"- {s['start']:%Y-%m-%d %H:%M} {mark}｜{s['title']}｜{s['location']}｜{t('teacher')}: {s['host']}")
 
 
 def daily() -> None:
@@ -253,30 +305,30 @@ def daily() -> None:
     tomorrow = datetime.now(TZ).date() + timedelta(days=1)
     choices = [s for s in sessions if s["start"].date() == tomorrow]
     booked_ids = {s["id"] for s in bookings}
-    print(f"Lingping 明日课程更新｜{tomorrow:%Y年%m月%d日}｜清迈时间")
-    print("\n一、明天全部英文课程")
+    print(f"{t('daily_title')}｜{tomorrow:%Y-%m-%d}｜{t('timezone_label')}")
+    print(f"\n{t('all_english')}")
     if choices:
         for s in choices:
             print(line(s, s["id"] in booked_ids))
     else:
-        print("暂无")
-    print("\n二、清迈线下英文课")
+        print(t("none"))
+    print(f"\n{t('local_english')}")
     local = [s for s in choices if not s["online"]]
     if local:
         for s in local:
             print(line(s, s["id"] in booked_ids))
     else:
-        print("暂无")
-    print("\n三、线上英文课")
+        print(t("none"))
+    print(f"\n{t('online_english')}")
     online = [s for s in choices if s["online"]]
     if online:
         for s in online:
             print(line(s, s["id"] in booked_ids))
     else:
-        print("暂无")
-    print("\n四、当前未来预定")
+        print(t("none"))
+    print(f"\n{t('future_bookings')}")
     print_bookings(bookings, tomorrow)
-    print(f"\n同步时间：{datetime.now(TZ):%Y-%m-%d %H:%M}（Asia/Bangkok）")
+    print(f"\n{t('synced')}: {datetime.now(TZ):%Y-%m-%d %H:%M} ({settings()['timezone']})")
 
 
 def load_state() -> dict:
@@ -295,9 +347,9 @@ def reminders(force: bool) -> None:
     for s in bookings:
         minutes = (s["start"] - now).total_seconds() / 60
         if 55 <= minutes <= 65 and (force or s["id"] not in reminded):
-            print(f"上课提醒：你预定的《{s['title']}》将在约 1 小时后开始。")
-            print(f"时间：{s['start']:%Y年%m月%d日 %H:%M}（清迈时间）")
-            print(f"形式：{'线上' if s['online'] else s['location']}｜老师：{s['host']}")
+            print(t("reminder", title=s["title"]))
+            print(f"{t('time')}: {s['start']:%Y-%m-%d %H:%M} ({t('timezone_label')})")
+            print(f"{t('format')}: {t('online') if s['online'] else s['location']}｜{t('teacher')}: {s['host']}")
             if not force:
                 reminded[s["id"]] = now.isoformat()
                 changed = True
@@ -309,10 +361,13 @@ def reminders(force: bool) -> None:
 
 
 def main() -> int:
+    global LANG_OVERRIDE
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=["daily", "bookings", "reminders", "calendar-json", "notification-status", "self-test"])
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--language", choices=["zh-CN", "zh", "en", "th"])
     args = parser.parse_args()
+    LANG_OVERRIDE = args.language
     try:
         if args.command == "daily":
             daily()
