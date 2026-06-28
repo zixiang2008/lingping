@@ -1,19 +1,20 @@
 ---
 name: lingping-class-assistant
-description: Use when a Lingping Club member needs course schedules, bookings, Chinese reminders, Hermes messaging, system notifications, Google Calendar synchronization, nightly updates, or one-hour-before-class reminders.
+description: Synchronize Lingping Club courses, bookings, multilingual reminders, Hermes messaging, system notifications, and Google Calendar for any configured member. Use when asked about Lingping.Skills, Chinese/English/Thai output, lingpingclub.com, tomorrow's classes, Chiang Mai in-person English events, current bookings, calendar synchronization, notification routing, nightly updates, or one-hour-before-class reminders.
 ---
 
 # Lingping.Skills
 
-Use the bundled collector as the source of truth. Present dates and times in the timezone configured in `~/.config/lingping/config.json` and write user-facing results in Chinese.
+Use the bundled collector as the source of truth. Present dates and times in the configured timezone. Write user-facing results in the configured language: Simplified Chinese (`zh-CN`), English (`en`), or Thai (`th`).
 
 ## Configuration and boundaries
 
 - Website: `https://lingpingclub.com`
 - Read `~/.config/lingping/config.json`. If missing, copy the shape from [references/config.example.json](references/config.example.json) and ask only for the member's Lingping username and target Google Calendar.
+- Read `language` from the same config. Default to `zh-CN`. Accept `--language zh-CN|en|th` as a one-run override.
 - Read schedules and bookings without asking for a password. The site's own public client performs username-only login; the collector discovers the current public client credentials at runtime.
 - Connect Google Calendar through official OAuth/connector authorization. Never ask for, use, store, or repeat a Google password.
-- Never book or cancel a class unless the member explicitly asks and confirms the exact class. Keep scheduled routines read-only.
+- Never book or cancel a class unless Elvis explicitly asks and confirms the exact class. This skill's scheduled routines are read-only.
 - Do not print API keys, access tokens, or internal user IDs.
 
 ## Run commands
@@ -28,6 +29,14 @@ SCRIPT="${CODEX_HOME:-$HOME/.codex}/skills/lingping-class-assistant/scripts/ling
 
 ```bash
 python3 "$SCRIPT" daily
+```
+
+Language examples:
+
+```bash
+python3 "$SCRIPT" daily --language zh-CN
+python3 "$SCRIPT" daily --language en
+python3 "$SCRIPT" daily --language th
 ```
 
 Return the command output as-is unless a short error explanation is needed. The report includes:
@@ -90,15 +99,15 @@ Use the Google Calendar connector for all reads and writes. Synchronize a bounde
 2. Match events by the `Lingping Session ID` stored in the description. If an event already exists, update it rather than creating a duplicate.
 3. For every booked item, create/update an opaque event titled `【已报名】课程名`, preserve its time and location, and set `reminders.use_default=false` with one popup override at 60 minutes.
 4. For unbooked items, include only Chiang Mai in-person English classes and offline English language-exchange activities. Create/update a transparent event titled `【未报名】课程名` with `reminders.use_default=false` and no overrides.
-5. Write Chinese descriptions containing course content, teacher, booking status, seats when available, source URL, and `Lingping Session ID: <source_id>`.
+5. Write descriptions in the configured language containing course content, teacher, booking status, seats when available, source URL, and `Lingping Session ID: <source_id>`.
 6. If an existing Lingping calendar event no longer appears in the current desired set, do not delete it automatically. Report it for review unless the user explicitly authorizes deletion.
 7. Before bulk creation, verify the authenticated Google profile and target calendar. The Google account password is never part of this workflow.
 
-All calendar-facing text and reminders must be Chinese.
+All calendar-facing status text and reminders must use the configured language. Preserve the original Lingping course title and source description when no authoritative translation exists.
 
 ## Automation contract
 
-Configure two recurring jobs in the timezone from `~/.config/lingping/config.json`:
+Configure two recurring jobs in `Asia/Bangkok`:
 
 - At 21:00 daily: invoke this skill and run the nightly update.
 - After the nightly update: run Google Calendar synchronization for the returned rolling window.
