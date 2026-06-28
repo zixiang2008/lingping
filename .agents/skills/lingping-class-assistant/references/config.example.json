@@ -1,0 +1,11 @@
+{
+  "lingping_username": "classmate@example.com",
+  "timezone": "Asia/Bangkok",
+  "calendar_id": "primary",
+  "notification": {
+    "mode": "auto",
+    "hermes_channel": "",
+    "fallbacks": ["google_calendar", "macos_notification"],
+    "avoid_duplicates": true
+  }
+}
