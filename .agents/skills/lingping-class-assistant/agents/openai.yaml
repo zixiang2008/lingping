@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lingping.Skills"
+  short_description: "同步课程、日历与中文提醒，自动选择 Hermes 或可靠后备渠道"
+  default_prompt: "使用 $lingping-class-assistant 同步课程，并检查最可靠且不重复的上课提醒方式。"
